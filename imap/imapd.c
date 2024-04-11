@@ -543,6 +543,7 @@ static void cmd_reconstruct(const char *tag, const char *name, int recursive);
 static void getlistargs(char *tag, struct listargs *listargs);
 static void cmd_list(char *tag, struct listargs *listargs);
 static void cmd_changesub(char *tag, char *namespace, char *name, int add);
+static void cmd_changeusergroup(char *tag, char *name, char *group, int add);
 static void cmd_getacl(const char *tag, const char *name);
 static void cmd_listrights(char *tag, char *name, char *identifier);
 static void cmd_myrights(const char *tag, const char *name);
@@ -2351,6 +2352,17 @@ static void cmdloop(void)
 
                 prometheus_increment(CYRUS_IMAP_SETANNOTATION_TOTAL);
             }
+            else if (!strcmp(cmd.s, "Setusergroup")) {
+                if (!imapd_userisadmin) goto badcmd;
+                if (readonly) goto noreadonly;
+                if (c != ' ') goto missingargs;
+                c = getastring(imapd_in, imapd_out, &arg1);
+                if (c != ' ') goto missingargs;
+                c = getastring(imapd_in, imapd_out, &arg2);
+                if (!IS_EOL(c, imapd_in)) goto extraargs;
+
+                cmd_changeusergroup(tag.s, arg1.s, arg2.s, 1);
+            }
             else if (!strcmp(cmd.s, "Setmetadata")) {
                 if (readonly) goto noreadonly;
                 if (c != ' ') goto missingargs;
@@ -2560,6 +2572,17 @@ static void cmdloop(void)
                 cmd_close(tag.s, cmd.s);
 
                 prometheus_increment(CYRUS_IMAP_UNSELECT_TOTAL);
+            }
+            else if (!strcmp(cmd.s, "Unsetusergroup")) {
+                if (!imapd_userisadmin) goto badcmd;
+                if (readonly) goto noreadonly;
+                if (c != ' ') goto missingargs;
+                c = getastring(imapd_in, imapd_out, &arg1);
+                if (c != ' ') goto missingargs;
+                c = getastring(imapd_in, imapd_out, &arg2);
+                if (!IS_EOL(c, imapd_in)) goto extraargs;
+
+                cmd_changeusergroup(tag.s, arg1.s, arg2.s, 0);
             }
             else if (!strcmp(cmd.s, "Undump")) {
                 if (readonly) goto noreadonly;
@@ -9180,6 +9203,53 @@ static void cmd_list(char *tag, struct listargs *listargs)
         if (list_callback_calls)
             prot_printf(imapd_out, " %u calls", list_callback_calls);
         prot_printf(imapd_out, ")\r\n");
+    }
+}
+
+/*
+ * Perform a SUBSCRIBE (add is nonzero) or
+ * UNSUBSCRIBE (add is zero) command
+ */
+static void cmd_changeusergroup(char *tag, char *userid, char *group, int add)
+{
+    const char *cmd = add ? "Setusergroup" : "Unsetusergroup";
+    int r = 0;
+
+    if (backend_inbox || (backend_inbox = proxy_findinboxserver(imapd_userid))) {
+        imapd_check(backend_inbox, 0);
+
+        if (!r) {
+            prot_printf(backend_inbox->out,
+                        "%s %s {" SIZE_T_FMT "+}\r\n%s"
+                        " {" SIZE_T_FMT "+}\r\n%s\r\n",
+                        tag, cmd,
+                        strlen(userid), userid,
+                        strlen(group), group);
+            pipe_including_tag(backend_inbox, tag, 0);
+        }
+        else {
+            prot_printf(imapd_out, "%s NO %s\r\n", tag, error_message(r));
+        }
+
+        return;
+    }
+
+    const char *canon_id = canonify_userid(userid, imapd_userid, NULL);
+    if (canon_id && !strncmp(group, "group:", 6))
+        r = mboxlist_set_usergroup(canon_id, group, add, /*silent*/0);
+    else r = IMAP_MAILBOX_BADNAME;
+
+    imapd_check(NULL, 0);
+
+    if (r) {
+        prot_printf(imapd_out, "%s NO %s: %s\r\n", tag, cmd, error_message(r));
+    }
+    else {
+        index_release(imapd_index);
+        sync_checkpoint(imapd_in);
+
+        prot_printf(imapd_out, "%s OK %s\r\n", tag,
+                    error_message(IMAP_OK_COMPLETED));
     }
 }
 
