@@ -202,8 +202,9 @@ static int imapd_starttls_done = 0; /* have we done a successful starttls? */
 static int imapd_tls_required = 0; /* is tls required? */
 static void *imapd_tls_comp = NULL; /* TLS compression method, if any */
 static int imapd_compress_done = 0; /* have we done a successful compress? */
-static const char *imapd_jmapaccess_url = NULL;
 static const char *plaintextloginalert = NULL;
+static const char *imapd_jmapaccess_url = NULL;
+static int imapd_jmapaccess_enabled = 0;
 static int ignorequota = 0;
 static int sync_sieve_mailbox_enabled = 0;
 static int sync_archive_enabled = 0;
@@ -417,7 +418,8 @@ static struct capa_struct base_capabilities[] = {
       { .statep = &imapd_idle_enabled }                       },
     { "IMAPSIEVE=",            0, /* not implemented */ { 0 } }, /* RFC 6785 */
     { "INPROGRESS",            CAPA_POSTAUTH,           { 0 } }, /* draft-ietf-extra-imap-inprogress */
-    { "JMAPACCESS",            0, /* just a respcode */ { 0 } }, /* draft-ietf-extra-jmapaccess */
+    { "JMAPACCESS",            CAPA_POSTAUTH|CAPA_STATE,         /* draft-ietf-extra-jmapaccess */
+      { .statep = &imapd_jmapaccess_enabled }                 },
     { "LANGUAGE",              0, /* not implemented */ { 0 } }, /* RFC 5255 */
     { "LIST-EXTENDED",         CAPA_POSTAUTH,           { 0 } }, /* RFC 5258 */
     { "LIST-METADATA",         CAPA_POSTAUTH,           { 0 } }, /* draft-ietf-extra-imap-list-metadata */
@@ -607,6 +609,8 @@ static void cmd_xmeid(const char *tag, const char *id);
 static void cmd_replace(char *tag, char *seqno, char *name, int usinguid);
 static void cmd_notify(char *tag, int set);
 static void push_updates(int idling);
+
+static void cmd_jmapaccess(char* tag);
 
 static int parsecreateargs(struct dlist **extargs);
 
@@ -1078,6 +1082,7 @@ int service_init(int argc, char **argv, char **envp)
 #endif
 
     imapd_jmapaccess_url = config_getstring(IMAPOPT_JMAPACCESS_URL);
+    imapd_jmapaccess_enabled = !!imapd_jmapaccess_url;
 
     /* setup for sending IMAP IDLE/NOTIFY notifications */
     if ((imapd_idle_enabled = idle_enabled())) {
@@ -1904,6 +1909,16 @@ static void cmdloop(void)
             else if (!strcmp(cmd.s, "Idle") && imapd_idle_enabled) {
                 if (!IS_EOL(c, imapd_in)) goto extraargs;
                 cmd_idle(tag.s);
+
+                prometheus_increment(CYRUS_IMAP_IDLE_TOTAL);
+            }
+            else goto badcmd;
+            break;
+
+        case 'J':
+            if (!strcmp(cmd.s, "Jmapaccess") && imapd_jmapaccess_enabled) {
+                if (!IS_EOL(c, imapd_in)) goto extraargs;
+                cmd_jmapaccess(tag.s);
 
                 prometheus_increment(CYRUS_IMAP_IDLE_TOTAL);
             }
@@ -2923,12 +2938,6 @@ static void authentication_success(const char *tag, int ssf, const char *reply)
 
     /* authstate already created by mysasl_proxy_policy() */
     imapd_userisadmin = global_authisa(imapd_authstate, IMAPOPT_ADMINS);
-
-    if (imapd_jmapaccess_url) {
-        prot_printf(imapd_out, "* OK [JMAPACCESS \"%s\"] %s\r\n",
-                    imapd_jmapaccess_url,
-                    "This server is also accessible via JMAP, see RFC8620");
-    }
 
     prot_printf(imapd_out, "%s OK", tag);
     if (!ssf) {
@@ -16619,4 +16628,17 @@ static void push_updates(int idling)
         json_decref(msg);
         msg = nextmsg;
     }
+}
+
+static void cmd_jmapaccess(char *tag)
+{
+    if (!imapd_jmapaccess_url) {
+        prot_printf(imapd_out, "%s NO %s\r\n", tag,
+                    "This server is not accessible via JMAP\r\n");
+        return;
+    }
+
+    prot_printf(imapd_out, "* JMAPACCESS \"%s\"\r\n", imapd_jmapaccess_url);
+    prot_printf(imapd_out, "%s OK %s\r\n", tag,
+                "This server is also accessible via JMAP, see RFC8620");
 }
