@@ -288,6 +288,9 @@ static struct dlist *mboxlist_entry_dlist(const char *dbname,
     if (mbentry->foldermodseq)
         dlist_setnum64(dl, "F", mbentry->foldermodseq);
 
+    if (mbentry->jmapuserid)
+        dlist_setatom(dl, "J", mbentry->jmapuserid);
+
     dlist_setdate(dl, "M", time(NULL));
 
     if (mbentry->acl)
@@ -617,6 +620,9 @@ static int parseentry_cb(int type, struct dlistsax_data *d)
             }
             else if (!strcmp(key, "I")) {
                 rock->mbentry->uniqueid = xstrdupnull(d->data);
+            }
+            else if (!strcmp(key, "J")) {
+                rock->mbentry->jmapuserid = xstrdupnull(d->data);
             }
             else if (!strcmp(key, "M")) {
                 rock->mbentry->mtime = atoi(d->data);
