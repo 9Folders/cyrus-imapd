@@ -2010,6 +2010,20 @@ static void annotation_get_uniqueid(annotate_state_t *state,
     buf_free(&value);
 }
 
+static void annotation_get_jmapuserid(annotate_state_t *state,
+                                    struct annotate_entry_list *entry)
+{
+    struct buf value = BUF_INITIALIZER;
+
+    assert(state->mailbox);
+
+    if (mailbox_jmapuserid(state->mailbox))
+        buf_appendcstr(&value, mailbox_jmapuserid(state->mailbox));
+
+    output_entryatt(state, entry->name, "", &value);
+    buf_free(&value);
+}
+
 static int rw_cb(const char *mailbox __attribute__((unused)),
                  uint32_t uid __attribute__((unused)),
                  const char *entry, const char *userid,
@@ -2500,6 +2514,16 @@ static const annotate_entrydesc_t mailbox_builtin_entries[] =
         ATTRIB_VALUE_SHARED,
         0,
         annotation_get_uniqueid,
+        NULL,
+        NULL,
+        NULL
+    },{
+        IMAP_ANNOT_NS "jmapuserid",
+        ATTRIB_TYPE_STRING,
+        BACKEND_ONLY,
+        ATTRIB_VALUE_SHARED,
+        0,
+        annotation_get_jmapuserid,
         NULL,
         NULL,
         NULL

@@ -1133,6 +1133,11 @@ EXPORTED const char *mailbox_uniqueid(const struct mailbox *mailbox)
     return mbentry->uniqueid ? mbentry->uniqueid : mailbox->h.uniqueid;
 }
 
+EXPORTED const char *mailbox_jmapuserid(const struct mailbox *mailbox)
+{
+    return mailbox->mbentry->jmapuserid;
+}
+
 EXPORTED const char *mailbox_partition(const struct mailbox *mailbox)
 {
     return mailbox->mbentry->partition;
