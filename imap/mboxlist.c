@@ -1939,6 +1939,7 @@ EXPORTED int mboxlist_createmailbox(const mbentry_t *mbentry,
     newmbentry->acl = xstrdupnull(acl);
     newmbentry->mbtype = mbtype;
     newmbentry->partition = xstrdupnull(newpartition);
+    newmbentry->jmapuserid = xstrdupnull(mbentry->jmapuserid);
     newmbentry->uniqueid = xstrdup(uniqueid ? uniqueid : makeuuid());
 
     if (!(flags & MBOXLIST_CREATE_DBONLY) && !isremote) {

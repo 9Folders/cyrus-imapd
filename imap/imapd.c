@@ -7629,6 +7629,7 @@ static void cmd_create(char *tag, char *name, struct dlist *extargs, int localon
     const char *partition = NULL;
     const char *server = NULL;
     const char *uniqueid = NULL;
+    const char *jmapuserid = NULL;
     struct buf specialuse = BUF_INITIALIZER;
     struct dlist *use;
     struct mailbox *mailbox = NULL;
@@ -7661,6 +7662,7 @@ static void cmd_create(char *tag, char *name, struct dlist *extargs, int localon
     dlist_getatom(extargs, "PARTITION", &partition);
     dlist_getatom(extargs, "SERVER", &server);
     dlist_getatom(extargs, "MAILBOXID", &uniqueid);
+    dlist_getatom(extargs, "JMAPUSERID", &jmapuserid);
     if (dlist_getatom(extargs, "TYPE", &type)) {
         if (!strcasecmp(type, "CALENDAR")) mbtype = MBTYPE_CALENDAR;
         else if (!strcasecmp(type, "COLLECTION")) mbtype = MBTYPE_COLLECTION;
@@ -7847,6 +7849,11 @@ static void cmd_create(char *tag, char *name, struct dlist *extargs, int localon
                             prot_printastring(s_conn->out, uniqueid);
                         }
 
+                        if (jmapuserid) {
+                            prot_printf(s_conn->out, "%sJMAPUSERID ", sep);
+                            prot_printastring(s_conn->out, jmapuserid);
+                        }
+
                         prot_putc(')', s_conn->out);
                     }
 
@@ -7966,6 +7973,7 @@ localcreate:
     mbentry.name = (char *) mbname_intname(mbname);
     mbentry.partition = (char *) partition;
     mbentry.uniqueid = (char *) uniqueid;
+    mbentry.jmapuserid = (char *) jmapuserid;
     mbentry.mbtype = mbtype;
 
     r = mboxlist_createmailbox(&mbentry, options, 0/*highestmodseq*/,
