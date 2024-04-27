@@ -148,6 +148,7 @@ EXPORTED mbentry_t *mboxlist_entry_copy(const mbentry_t *src)
     copy->server = xstrdupnull(src->server);
     copy->acl = xstrdupnull(src->acl);
     copy->uniqueid = xstrdupnull(src->uniqueid);
+    copy->jmapuserid = xstrdupnull(src->jmapuserid);
 
     copy->legacy_specialuse = xstrdupnull(src->legacy_specialuse);
 
@@ -187,6 +188,7 @@ EXPORTED void mboxlist_entry_free(mbentry_t **mbentryptr)
     free(mbentry->server);
     free(mbentry->acl);
     free(mbentry->uniqueid);
+    free(mbentry->jmapuserid);
 
     free(mbentry->legacy_specialuse);
 
