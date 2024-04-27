@@ -2024,6 +2024,28 @@ static void annotation_get_jmapuserid(annotate_state_t *state,
     buf_free(&value);
 }
 
+static int annotation_set_jmapuserid(annotate_state_t *state,
+                                        struct annotate_entry_list *entry,
+                                        int maywrite)
+{
+    struct mailbox *mailbox = state->mailbox;
+
+    assert(mailbox);
+
+    if (!maywrite) return IMAP_PERMISSION_DENIED;
+
+    mbentry_t *newmbentry = mboxlist_entry_copy(mailbox->mbentry);
+    free(newmbentry->jmapuserid);
+
+    newmbentry->jmapuserid = xstrdupnull(entry->shared.s);
+
+    int r = mboxlist_updatelock(newmbentry, /*localonly*/0);
+
+    mboxlist_entry_free(&newmbentry);
+
+    return r;
+}
+
 static int rw_cb(const char *mailbox __attribute__((unused)),
                  uint32_t uid __attribute__((unused)),
                  const char *entry, const char *userid,
@@ -2524,7 +2546,7 @@ static const annotate_entrydesc_t mailbox_builtin_entries[] =
         ATTRIB_VALUE_SHARED,
         0,
         annotation_get_jmapuserid,
-        NULL,
+        annotation_set_jmapuserid,
         NULL,
         NULL
     },{ NULL, 0, ANNOTATION_PROXY_T_INVALID, 0, 0, NULL, NULL, NULL, NULL }
