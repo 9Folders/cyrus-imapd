@@ -218,6 +218,8 @@ static int jmap_auth(const char *userid __attribute__((unused)))
 
 static int jmap_need_auth(struct transaction_t *txn __attribute__((unused)))
 {
+    if (txn->meth == METH_OPTIONS) return 0;
+
     /* All endpoints require authentication */
     return HTTP_UNAUTHORIZED;
 }
