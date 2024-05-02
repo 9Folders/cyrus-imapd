@@ -455,6 +455,8 @@ struct auth_scheme_t auth_schemes[] = {
       AUTH_NEED_PERSIST | AUTH_BASE64 },
     { AUTH_BEARER, "Bearer", NULL,
       AUTH_SERVER_FIRST | AUTH_REALM_PARAM },
+    { AUTH_XOAUTH2, "XOAUTH2", "XOAUTH2",
+      AUTH_SERVER_FIRST | AUTH_BASE64 },
       AUTH_SCHEME_BASIC,
     { 0, NULL, NULL, 0 }
 };
