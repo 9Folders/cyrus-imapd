@@ -193,7 +193,8 @@ enum {
     AUTH_NTLM         = (1<<3),
     AUTH_BEARER       = (1<<4),
     AUTH_SCRAM_SHA1   = (1<<5),
-    AUTH_SCRAM_SHA256 = (1<<6)
+    AUTH_SCRAM_SHA256 = (1<<6),
+    AUTH_XOAUTH2      = (1<<7)
 };
 
 /* Auth scheme flags */
