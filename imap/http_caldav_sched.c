@@ -391,41 +391,47 @@ static int imip_send_sendmail(const char *userid, icalcomponent *ical, const cha
     buf_appendcstr(&msgbuf, "Content-Type: text/plain; charset=utf-8\r\n");
     buf_appendcstr(&msgbuf, "Content-Disposition: inline\r\n");
 
-    buf_printf(&plainbuf, "You have received %s from %s <%s>\r\n\r\n", msg_type,
-               originator->name ? originator->name : "", originator->addr);
-    if (summary) {
-        buf_setcstr(&tmpbuf, summary);
+    if (descrip) {
+        buf_setcstr(&tmpbuf, descrip);
         buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
-        buf_printf(&plainbuf, "Summary    : %s\r\n", buf_cstring(&tmpbuf));
+        buf_printf(&plainbuf, "%s\r\n", buf_cstring(&tmpbuf));
     }
-    if (location) {
-        buf_setcstr(&tmpbuf, location);
-        buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
-        buf_printf(&plainbuf, "Location   : %s\r\n", buf_cstring(&tmpbuf));
-    }
-    buf_printf(&plainbuf, "When       : %s\r\n", when);
-    if (meth == ICAL_METHOD_REPLY) {
-        if (originator->partstat)
-            buf_printf(&plainbuf, "RSVP       : %s\r\n", originator->partstat);
-    }
-    else {
-        if (status) buf_printf(&plainbuf, "Status     : %s\r\n", status);
 
-        for (cp = "Attendees  : ", recip=recipients; recip; recip=recip->next) {
-            buf_printf(&plainbuf, "%s* %s <%s>",
-                       cp, recip->name ? recip->name : "", recip->addr);
-            if (recip->role) buf_printf(&plainbuf, "\t(%s)", recip->role);
-            buf_appendcstr(&plainbuf, "\r\n");
-
-            cp = TEXT_INDENT;
-        }
-
-        if (descrip) {
-            buf_setcstr(&tmpbuf, descrip);
-            buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
-            buf_printf(&plainbuf, "Description: %s\r\n", buf_cstring(&tmpbuf));
-        }
-    }
+//    buf_printf(&plainbuf, "You have received %s from %s <%s>\r\n\r\n", msg_type,
+//               originator->name ? originator->name : "", originator->addr);
+//    if (summary) {
+//        buf_setcstr(&tmpbuf, summary);
+//        buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
+//        buf_printf(&plainbuf, "Summary    : %s\r\n", buf_cstring(&tmpbuf));
+//    }
+//    if (location) {
+//        buf_setcstr(&tmpbuf, location);
+//        buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
+//        buf_printf(&plainbuf, "Location   : %s\r\n", buf_cstring(&tmpbuf));
+//    }
+//    buf_printf(&plainbuf, "When       : %s\r\n", when);
+//    if (meth == ICAL_METHOD_REPLY) {
+//        if (originator->partstat)
+//            buf_printf(&plainbuf, "RSVP       : %s\r\n", originator->partstat);
+//    }
+//    else {
+//        if (status) buf_printf(&plainbuf, "Status     : %s\r\n", status);
+//
+//        for (cp = "Attendees  : ", recip=recipients; recip; recip=recip->next) {
+//            buf_printf(&plainbuf, "%s* %s <%s>",
+//                       cp, recip->name ? recip->name : "", recip->addr);
+//            if (recip->role) buf_printf(&plainbuf, "\t(%s)", recip->role);
+//            buf_appendcstr(&plainbuf, "\r\n");
+//
+//            cp = TEXT_INDENT;
+//        }
+//
+//        if (descrip) {
+//            buf_setcstr(&tmpbuf, descrip);
+//            buf_replace_all(&tmpbuf, "\n", "\r\n" TEXT_INDENT);
+//            buf_printf(&plainbuf, "Description: %s\r\n", buf_cstring(&tmpbuf));
+//        }
+//    }
 
     mimebody = charset_qpencode_mimebody(buf_base(&plainbuf),
                                          buf_len(&plainbuf), 0, &outlen);
@@ -454,49 +460,56 @@ static int imip_send_sendmail(const char *userid, icalcomponent *ical, const cha
     }
     else originator->name = originator->addr;
 
-    buf_printf(&msgbuf, "<b>You have received %s from"
-            " <a href=\"mailto:%s\">%s</a></b><p>\r\n",
-            msg_type, originator->addr, originator->name);
-
-    buf_appendcstr(&msgbuf, "<table border cellpadding=5>\r\n");
-    if (summary) {
-        HTMLencode(&tmpbuf, summary);
-        buf_printf(&msgbuf, HTML_ROW, "Summary", buf_cstring(&tmpbuf));
+    if (descrip) {
+        HTMLencode(&tmpbuf, descrip);
+        buf_printf(&msgbuf, "%s<p>\r\n", buf_cstring(&tmpbuf));
     }
-    if (location) {
-        HTMLencode(&tmpbuf, location);
-        buf_printf(&msgbuf, HTML_ROW, "Location", buf_cstring(&tmpbuf));
-    }
-    buf_printf(&msgbuf, HTML_ROW, "When", when);
-    if (meth == ICAL_METHOD_REPLY) {
-        if (originator->partstat)
-            buf_printf(&msgbuf, HTML_ROW, "RSVP", originator->partstat);
-    }
-    else {
-        if (status) buf_printf(&msgbuf, HTML_ROW, "Status", status);
 
-        buf_appendcstr(&msgbuf, "<tr><td><b>Attendees</b></td>");
-        for (cp = "<td>", recip = recipients; recip; recip = recip->next) {
-            if (recip->name) {
-                HTMLencode(&tmpbuf, recip->name);
-                recip->name = buf_cstring(&tmpbuf);
-            }
-            else recip->name = recip->addr;
+//    buf_printf(&msgbuf, "<b>You have received %s from"
+//            " <a href=\"mailto:%s\">%s</a></b><p>\r\n",
+//            msg_type, originator->addr, originator->name);
+//
+//    buf_appendcstr(&msgbuf, "<table border cellpadding=5>\r\n");
+//    if (summary) {
+//        HTMLencode(&tmpbuf, summary);
+//        buf_printf(&msgbuf, HTML_ROW, "Summary", buf_cstring(&tmpbuf));
+//    }
+//    if (location) {
+//        HTMLencode(&tmpbuf, location);
+//        buf_printf(&msgbuf, HTML_ROW, "Location", buf_cstring(&tmpbuf));
+//    }
+//    buf_printf(&msgbuf, HTML_ROW, "When", when);
+//    if (meth == ICAL_METHOD_REPLY) {
+//        if (originator->partstat)
+//            buf_printf(&msgbuf, HTML_ROW, "RSVP", originator->partstat);
+//    }
+//    else {
+//        if (status) buf_printf(&msgbuf, HTML_ROW, "Status", status);
+//
+//        buf_appendcstr(&msgbuf, "<tr><td><b>Attendees</b></td>");
+//        for (cp = "<td>", recip = recipients; recip; recip = recip->next) {
+//            if (recip->name) {
+//                HTMLencode(&tmpbuf, recip->name);
+//                recip->name = buf_cstring(&tmpbuf);
+//            }
+//            else recip->name = recip->addr;
+//
+//            buf_printf(&msgbuf, "%s&#8226; <a href=\"mailto:%s\">%s</a>",
+//                    cp, recip->addr, recip->name);
+//            if (recip->role) buf_printf(&msgbuf, " <i>(%s)</i>", recip->role);
+//
+//            cp = "\n  <br>";
+//        }
+//        buf_appendcstr(&msgbuf, "</td></tr>\r\n");
+//
+//        if (descrip) {
+//            HTMLencode(&tmpbuf, descrip);
+//            buf_printf(&msgbuf, HTML_ROW, "Description", buf_cstring(&tmpbuf));
+//        }
+//    }
+//    buf_printf(&msgbuf, "</table></body></html>\r\n");
 
-            buf_printf(&msgbuf, "%s&#8226; <a href=\"mailto:%s\">%s</a>",
-                    cp, recip->addr, recip->name);
-            if (recip->role) buf_printf(&msgbuf, " <i>(%s)</i>", recip->role);
-
-            cp = "\n  <br>";
-        }
-        buf_appendcstr(&msgbuf, "</td></tr>\r\n");
-
-        if (descrip) {
-            HTMLencode(&tmpbuf, descrip);
-            buf_printf(&msgbuf, HTML_ROW, "Description", buf_cstring(&tmpbuf));
-        }
-    }
-    buf_printf(&msgbuf, "</table></body></html>\r\n");
+    buf_printf(&msgbuf, "</body></html>\r\n");
 
     /* iCalendar part */
     buf_printf(&msgbuf, "\r\n--%s_A\r\n", boundary);
