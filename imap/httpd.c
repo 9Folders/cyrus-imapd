@@ -5173,6 +5173,8 @@ EXPORTED int httpd_myrights(struct auth_state *authstate, const mbentry_t *mbent
 /* Allow unauthenticated GET/HEAD, deny all other unauthenticated requests */
 EXPORTED int http_allow_noauth_get(struct transaction_t *txn)
 {
+    if (txn->meth == METH_OPTIONS) return 0;
+
     /* Inverse logic: True means we *require* authentication */
     switch (txn->meth) {
     case METH_GET:
