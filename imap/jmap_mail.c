@@ -661,6 +661,55 @@ static struct header_prop *_header_parseprop(const char *s)
     return hprop;
 }
 
+
+bool _is_valid_utf8(const unsigned char *str, size_t len) {
+    if (len == 0) return false;
+
+    if (*str <= 0x7F) {
+        // ASCII
+        return true;
+    } else if ((*str & 0xE0) == 0xC0 && len >= 2) {
+        // 2bytes
+        return (str[1] & 0xC0) == 0x80;
+    } else if ((*str & 0xF0) == 0xE0 && len >= 3) {
+        // 3bytes
+        return (str[1] & 0xC0) == 0x80 && (str[2] & 0xC0) == 0x80;
+    } else if ((*str & 0xF8) == 0xF0 && len >= 4) {
+        // 4bytes
+        return (str[1] & 0xC0) == 0x80 && (str[2] & 0xC0) == 0x80 && (str[3] & 0xC0) == 0x80;
+    }
+    return false;
+}
+
+void _remove_invalid_utf8(char *str) {
+    size_t len = strlen(str);
+    size_t i = 0, j = 0;
+
+    while (i < len) {
+        size_t char_len = 1;
+        if ((unsigned char)str[i] <= 0x7F) {
+            char_len = 1; // ASCII
+        } else if ((unsigned char)str[i] <= 0xDF) {
+            char_len = 2; // 2bytes UTF-8
+        } else if ((unsigned char)str[i] <= 0xEF) {
+            char_len = 3; // 3bytes UTF-8
+        } else if ((unsigned char)str[i] <= 0xF7) {
+            char_len = 4; // 4bytes UTF-8
+        }
+
+        if (_is_valid_utf8((unsigned char *)&str[i], char_len)) {
+            for (size_t k = 0; k < char_len; k++) {
+                str[j++] = str[i++];
+            }
+        } else {
+            i++;
+        }
+    }
+
+    str[j] = '\0';
+}
+
+
 /* Generate a preview of text of at most len bytes, excluding the zero
  * byte.
  *
@@ -7866,6 +7915,7 @@ static int _email_get_bodies(jmap_req_t *req,
                 int64_t len = config_getbytesize(IMAPOPT_JMAP_PREVIEW_LENGTH, 'B');
                 if (len < 0) len = 0;
                 char *preview = _email_extract_preview(text, len);
+                remove_invalid_utf8(preview);
                 json_object_set_new(email, "preview", json_string(preview));
                 free(preview);
                 free(text);
