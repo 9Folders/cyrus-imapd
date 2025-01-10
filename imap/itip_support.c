@@ -554,6 +554,7 @@ static const char *deliver_merge_reply(icalcomponent *ical,  // current iCalenda
         /* Get the sending attendee */
         att = icalcomponent_get_first_invitee(itip);
         attendee = icalproperty_get_invitee(att);
+        if (!strncasecmp(attendee, "mailto:", 7)) attendee += 7;  // Skip mailto: prefix
         param = icalproperty_get_first_parameter(att, ICAL_PARTSTAT_PARAMETER);
         if (param) partstat = icalparameter_get_partstat(param);
         param = icalproperty_get_first_parameter(att, ICAL_CN_PARAMETER);
@@ -561,8 +562,17 @@ static const char *deliver_merge_reply(icalcomponent *ical,  // current iCalenda
 
         /* Find matching attendee in existing object */
         for (prop = icalcomponent_get_first_invitee(comp);
-             prop && strcmpnull(attendee, icalproperty_get_invitee(prop));
-             prop = icalcomponent_get_next_invitee(comp));
+             prop;
+             prop = icalcomponent_get_next_invitee(comp)) {
+            const char *existing = icalproperty_get_invitee(prop);
+            if (!existing) continue;
+            if (!strncasecmp(existing, "mailto:", 7)) existing += 7;
+            
+            if (!strcasecmp(attendee, existing)) {  // Case-insensitive comparison
+                break;
+            }
+        }
+
         if (!prop) {
             /* Attendee added themselves to this recurrence */
             assert(icalproperty_isa(prop) != ICAL_VOTER_PROPERTY);
